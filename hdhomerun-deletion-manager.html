@@ -1,0 +1,543 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>HDHomeRun Deletion Manager</title>
+<style>
+  :root {
+    --bg: #f4f5f7;
+    --card: #ffffff;
+    --border: #dfe3e8;
+    --text: #1f2430;
+    --muted: #6b7280;
+    --accent: #2563eb;
+    --accent-hover: #1d4ed8;
+    --danger: #dc2626;
+    --danger-hover: #b91c1c;
+    --ok: #16a34a;
+  }
+  * { box-sizing: border-box; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    margin: 0;
+    padding: 24px;
+  }
+  .container { max-width: 860px; margin: 0 auto; }
+  h1 { font-size: 1.5rem; margin-bottom: 4px; }
+  .subtitle { color: var(--muted); margin-top: 0; margin-bottom: 20px; font-size: 0.95rem; }
+
+  .config {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 14px 16px;
+    margin-bottom: 18px;
+    display: flex;
+    gap: 10px;
+    flex-wrap: wrap;
+    align-items: center;
+  }
+  .config label { font-size: 0.85rem; color: var(--muted); }
+  .config input[type=text] {
+    flex: 1;
+    min-width: 220px;
+    padding: 8px 10px;
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    font-size: 0.9rem;
+  }
+  button {
+    cursor: pointer;
+    border: none;
+    border-radius: 6px;
+    padding: 8px 14px;
+    font-size: 0.9rem;
+    font-weight: 600;
+    transition: background 0.15s;
+  }
+  .btn-primary { background: var(--accent); color: white; }
+  .btn-primary:hover { background: var(--accent-hover); }
+  .btn-secondary { background: #eef0f3; color: var(--text); }
+  .btn-secondary:hover { background: #e2e5ea; }
+  .btn-danger { background: var(--danger); color: white; }
+  .btn-danger:hover { background: var(--danger-hover); }
+  button:disabled { opacity: 0.5; cursor: not-allowed; }
+
+  #status {
+    font-size: 0.9rem;
+    margin-bottom: 14px;
+    min-height: 1.2em;
+  }
+  #status.error { color: var(--danger); }
+  #status.ok { color: var(--ok); }
+  #status.info { color: var(--muted); }
+
+  .toolbar {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 10px;
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+  .toolbar .left { display: flex; gap: 8px; }
+
+  .show-card {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    margin-bottom: 12px;
+    overflow: hidden;
+  }
+  .show-header {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 12px 16px;
+    cursor: pointer;
+  }
+  .show-header input[type=checkbox] {
+    width: 18px;
+    height: 18px;
+    flex-shrink: 0;
+  }
+  .show-thumb {
+    width: 40px;
+    height: 40px;
+    border-radius: 6px;
+    object-fit: cover;
+    background: #eee;
+    flex-shrink: 0;
+  }
+  .show-title { font-weight: 600; font-size: 1.02rem; flex: 1; }
+  .show-count { color: var(--muted); font-size: 0.85rem; margin-right: 8px; }
+  .chevron { color: var(--muted); font-size: 0.8rem; transition: transform 0.15s; }
+  .show-card.open .chevron { transform: rotate(90deg); }
+
+  .episodes {
+    display: none;
+    border-top: 1px solid var(--border);
+    padding: 6px 16px 10px 52px;
+  }
+  .show-card.open .episodes { display: block; }
+  .episode-row {
+    padding: 7px 0;
+    border-bottom: 1px dashed #ecedf0;
+    font-size: 0.88rem;
+    display: flex;
+    align-items: flex-start;
+    gap: 10px;
+  }
+  .episode-row:last-child { border-bottom: none; }
+  .episode-row input[type=checkbox] {
+    width: 16px;
+    height: 16px;
+    margin-top: 2px;
+    flex-shrink: 0;
+  }
+  .episode-text { flex: 1; }
+  .episode-title { font-weight: 500; }
+  .episode-meta { color: var(--muted); font-size: 0.8rem; margin-top: 2px; }
+
+  .footer-actions {
+    position: sticky;
+    bottom: 0;
+    background: var(--bg);
+    padding: 14px 0;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    border-top: 1px solid var(--border);
+    margin-top: 8px;
+  }
+  .rerecord-option { font-size: 0.85rem; color: var(--muted); display: flex; align-items: center; gap: 6px; }
+  #deleteLog {
+    margin-top: 14px;
+    font-size: 0.85rem;
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 10px 14px;
+    max-height: 200px;
+    overflow-y: auto;
+    display: none;
+  }
+  #deleteLog div.fail { color: var(--danger); }
+  #deleteLog div.pass { color: var(--ok); }
+  .empty-state { color: var(--muted); text-align: center; padding: 40px 0; }
+</style>
+</head>
+<body>
+<div class="container">
+  <h1>HDHomeRun Deletion Manager</h1>
+  <p class="subtitle">Browse recorded shows and delete entire shows (all episodes) from your HDHomeRun DVR.</p>
+
+  <div class="config">
+    <label for="baseUrl">Tuner/DVR address:</label>
+    <input type="text" id="baseUrl" value="http://hdhomerun.local">
+    <button class="btn-secondary" id="loadBtn">Load Recordings</button>
+  </div>
+
+  <div id="status" class="info">Enter the address of your HDHomeRun device and click "Load Recordings".</div>
+
+  <form id="showsForm">
+    <div class="toolbar" id="toolbar" style="display:none;">
+      <div class="left">
+        <button type="button" class="btn-secondary" id="selectAllBtn">Select all</button>
+        <button type="button" class="btn-secondary" id="selectNoneBtn">Select none</button>
+      </div>
+      <div id="countLabel" class="show-count"></div>
+    </div>
+
+    <div id="showsList"></div>
+
+    <div class="footer-actions" id="footerActions" style="display:none;">
+      <button type="submit" class="btn-danger" id="deleteBtn">Delete Selected Shows</button>
+      <label class="rerecord-option">
+        <input type="checkbox" id="rerecordOption">
+        Allow deleted episodes to be re-recorded (otherwise they won't record again)
+      </label>
+    </div>
+  </form>
+
+  <div id="deleteLog"></div>
+</div>
+
+<script>
+(function () {
+  const baseUrlInput = document.getElementById('baseUrl');
+  const loadBtn = document.getElementById('loadBtn');
+  const statusEl = document.getElementById('status');
+  const showsList = document.getElementById('showsList');
+  const toolbar = document.getElementById('toolbar');
+  const footerActions = document.getElementById('footerActions');
+  const form = document.getElementById('showsForm');
+  const deleteBtn = document.getElementById('deleteBtn');
+  const rerecordOption = document.getElementById('rerecordOption');
+  const deleteLog = document.getElementById('deleteLog');
+  const countLabel = document.getElementById('countLabel');
+
+  // In-memory model: array of { title, imageUrl, episodes: [ {title, meta, cmdUrl} ] }
+  let shows = [];
+
+  function setStatus(msg, type) {
+    statusEl.textContent = msg;
+    statusEl.className = type || 'info';
+  }
+
+  function fmtDate(unixSeconds) {
+    if (!unixSeconds) return '';
+    try {
+      return new Date(unixSeconds * 1000).toLocaleString();
+    } catch (e) {
+      return '';
+    }
+  }
+
+  async function fetchJson(url) {
+    const res = await fetch(url, { headers: { 'Accept': 'application/json' } });
+    if (!res.ok) throw new Error('HTTP ' + res.status + ' fetching ' + url);
+    return res.json();
+  }
+
+  async function discoverStorageUrl(base) {
+    // Try discover.json first; fall back to /recorded_files.json directly.
+    try {
+      const info = await fetchJson(base.replace(/\/$/, '') + '/discover.json');
+      if (info.StorageURL) return info.StorageURL;
+    } catch (e) {
+      // ignore, fall through to direct fallback
+    }
+    return base.replace(/\/$/, '') + '/recorded_files.json';
+  }
+
+  async function loadRecordings() {
+    const base = baseUrlInput.value.trim().replace(/\/$/, '');
+    if (!base) {
+      setStatus('Please enter the HDHomeRun address.', 'error');
+      return;
+    }
+    setStatus('Looking up recording storage location…', 'info');
+    showsList.innerHTML = '';
+    toolbar.style.display = 'none';
+    footerActions.style.display = 'none';
+    deleteLog.style.display = 'none';
+    deleteLog.innerHTML = '';
+    shows = [];
+
+    let storageUrl;
+    try {
+      storageUrl = await discoverStorageUrl(base);
+    } catch (e) {
+      setStatus('Could not reach ' + base + '. Check the address and try again.', 'error');
+      return;
+    }
+
+    setStatus('Loading recorded shows…', 'info');
+    let topLevel;
+    try {
+      topLevel = await fetchJson(storageUrl);
+    } catch (e) {
+      setStatus('Failed to load recordings from ' + storageUrl + '. ' +
+        'If your browser console shows a CORS error, you need to open this page ' +
+        'from the same network context as the HDHomeRun device, or run it via a local file/server ' +
+        'with browser security relaxed for local testing. Details: ' + e.message, 'error');
+      return;
+    }
+
+    if (!Array.isArray(topLevel) || topLevel.length === 0) {
+      setStatus('No recordings found.', 'info');
+      showsList.innerHTML = '<div class="empty-state">No recorded shows.</div>';
+      return;
+    }
+
+    // Each top-level entry is either a series group (has EpisodesURL) or a standalone
+    // episode (has CmdURL directly).
+    for (const entry of topLevel) {
+      if (entry.EpisodesURL) {
+        let episodes = [];
+        try {
+          episodes = await fetchJson(entry.EpisodesURL);
+        } catch (e) {
+          episodes = [];
+        }
+        shows.push({
+          title: entry.Title || '(untitled show)',
+          imageUrl: entry.ImageURL || '',
+          episodes: (episodes || []).map(ep => ({
+            title: ep.EpisodeTitle || ep.Title || '(untitled episode)',
+            meta: [ep.EpisodeNumber, fmtDate(ep.RecordStartTime || ep.StartTime)].filter(Boolean).join(' · '),
+            cmdUrl: ep.CmdURL || ''
+          })).filter(ep => ep.cmdUrl)
+        });
+      } else if (entry.CmdURL) {
+        // Standalone recording, not grouped into a series.
+        shows.push({
+          title: entry.Title || '(untitled show)',
+          imageUrl: entry.ImageURL || '',
+          episodes: [{
+            title: entry.EpisodeTitle || entry.Title || '(untitled episode)',
+            meta: [entry.EpisodeNumber, fmtDate(entry.RecordStartTime || entry.StartTime)].filter(Boolean).join(' · '),
+            cmdUrl: entry.CmdURL
+          }]
+        });
+      }
+    }
+
+    renderShows();
+    if (shows.length === 0) {
+      setStatus('No deletable recordings found.', 'info');
+    } else {
+      setStatus('Loaded ' + shows.length + ' show(s).', 'ok');
+      toolbar.style.display = 'flex';
+      footerActions.style.display = 'flex';
+    }
+  }
+
+  function renderShows() {
+    showsList.innerHTML = '';
+    shows.forEach((show, idx) => {
+      const card = document.createElement('div');
+      card.className = 'show-card';
+
+      const header = document.createElement('div');
+      header.className = 'show-header';
+
+      const checkbox = document.createElement('input');
+      checkbox.type = 'checkbox';
+      checkbox.className = 'show-checkbox';
+      checkbox.dataset.showIndex = idx;
+      checkbox.addEventListener('click', (e) => e.stopPropagation());
+      checkbox.addEventListener('change', () => {
+        // Toggling the show checkbox sets every episode checkbox for that show.
+        episodesDiv.querySelectorAll('input[type=checkbox]').forEach(cb => cb.checked = checkbox.checked);
+        updateCountLabel();
+      });
+
+      const chevron = document.createElement('span');
+      chevron.className = 'chevron';
+      chevron.textContent = '▶';
+
+      const title = document.createElement('div');
+      title.className = 'show-title';
+      title.textContent = show.title;
+
+      const count = document.createElement('div');
+      count.className = 'show-count';
+      count.textContent = show.episodes.length + ' episode' + (show.episodes.length === 1 ? '' : 's');
+
+      header.appendChild(checkbox);
+      if (show.imageUrl) {
+        const img = document.createElement('img');
+        img.className = 'show-thumb';
+        img.src = show.imageUrl;
+        img.alt = '';
+        header.appendChild(img);
+      }
+      header.appendChild(title);
+      header.appendChild(count);
+      header.appendChild(chevron);
+
+      header.addEventListener('click', () => card.classList.toggle('open'));
+
+      const episodesDiv = document.createElement('div');
+      episodesDiv.className = 'episodes';
+      show.episodes.forEach((ep, epIdx) => {
+        const row = document.createElement('div');
+        row.className = 'episode-row';
+
+        const epCheckbox = document.createElement('input');
+        epCheckbox.type = 'checkbox';
+        epCheckbox.className = 'episode-checkbox';
+        epCheckbox.dataset.showIndex = idx;
+        epCheckbox.dataset.episodeIndex = epIdx;
+        epCheckbox.addEventListener('change', () => {
+          updateShowCheckboxState(idx);
+          updateCountLabel();
+        });
+        row.appendChild(epCheckbox);
+
+        const text = document.createElement('div');
+        text.className = 'episode-text';
+        const t = document.createElement('div');
+        t.className = 'episode-title';
+        t.textContent = ep.title;
+        text.appendChild(t);
+        if (ep.meta) {
+          const m = document.createElement('div');
+          m.className = 'episode-meta';
+          m.textContent = ep.meta;
+          text.appendChild(m);
+        }
+        row.appendChild(text);
+        episodesDiv.appendChild(row);
+      });
+
+      card.appendChild(header);
+      card.appendChild(episodesDiv);
+      showsList.appendChild(card);
+    });
+    updateCountLabel();
+  }
+
+  function getShowCheckboxes() {
+    return Array.from(showsList.querySelectorAll('input.show-checkbox'));
+  }
+
+  function getEpisodeCheckboxes(showIndex) {
+    const selector = showIndex === undefined
+      ? 'input.episode-checkbox'
+      : 'input.episode-checkbox[data-show-index="' + showIndex + '"]';
+    return Array.from(showsList.querySelectorAll(selector));
+  }
+
+  // Keep a show's checkbox in sync (checked / unchecked / indeterminate)
+  // based on which of its episode checkboxes are checked.
+  function updateShowCheckboxState(showIndex) {
+    const epCbs = getEpisodeCheckboxes(showIndex);
+    const showCb = showsList.querySelector('input.show-checkbox[data-show-index="' + showIndex + '"]');
+    if (!showCb || epCbs.length === 0) return;
+    const checkedCount = epCbs.filter(cb => cb.checked).length;
+    showCb.checked = checkedCount === epCbs.length;
+    showCb.indeterminate = checkedCount > 0 && checkedCount < epCbs.length;
+  }
+
+  function updateCountLabel() {
+    const checkedEpisodes = getEpisodeCheckboxes().filter(cb => cb.checked).length;
+    const showsWithSelection = new Set(
+      getEpisodeCheckboxes().filter(cb => cb.checked).map(cb => cb.dataset.showIndex)
+    ).size;
+    countLabel.textContent = checkedEpisodes + ' episode(s) selected across ' + showsWithSelection + ' show(s)';
+  }
+
+  document.getElementById('selectAllBtn').addEventListener('click', () => {
+    getEpisodeCheckboxes().forEach(cb => cb.checked = true);
+    getShowCheckboxes().forEach(cb => { cb.checked = true; cb.indeterminate = false; });
+    updateCountLabel();
+  });
+  document.getElementById('selectNoneBtn').addEventListener('click', () => {
+    getEpisodeCheckboxes().forEach(cb => cb.checked = false);
+    getShowCheckboxes().forEach(cb => { cb.checked = false; cb.indeterminate = false; });
+    updateCountLabel();
+  });
+
+  loadBtn.addEventListener('click', loadRecordings);
+
+  form.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const checkedEpisodeCbs = getEpisodeCheckboxes().filter(cb => cb.checked);
+    if (checkedEpisodeCbs.length === 0) {
+      setStatus('No episodes selected.', 'error');
+      return;
+    }
+
+    // Group selected episodes by show, for the confirmation message and delete log.
+    const byShow = new Map();
+    checkedEpisodeCbs.forEach(cb => {
+      const showIdx = cb.dataset.showIndex;
+      const epIdx = cb.dataset.episodeIndex;
+      if (!byShow.has(showIdx)) byShow.set(showIdx, []);
+      byShow.get(showIdx).push(shows[showIdx].episodes[epIdx]);
+    });
+
+    const summaryLines = Array.from(byShow.entries()).map(([showIdx, eps]) => {
+      const show = shows[showIdx];
+      const allSelected = eps.length === show.episodes.length;
+      return show.title + ' — ' + eps.length + (allSelected ? ' episode(s) (entire show)' : ' of ' + show.episodes.length + ' episode(s)');
+    });
+    const confirmMsg = 'Delete ' + checkedEpisodeCbs.length + ' episode(s) from the DVR?\n\n' +
+      summaryLines.join('\n') + '\n\nThis cannot be undone.';
+    if (!confirm(confirmMsg)) return;
+
+    deleteBtn.disabled = true;
+    loadBtn.disabled = true;
+    deleteLog.style.display = 'block';
+    deleteLog.innerHTML = '';
+    const rerecord = rerecordOption.checked ? '1' : '0';
+
+    let successCount = 0, failCount = 0;
+
+    for (const [showIdx, eps] of byShow.entries()) {
+      const show = shows[showIdx];
+      setStatus('Deleting selected episodes of "' + show.title + '"…', 'info');
+      for (const ep of eps) {
+        try {
+          const separator = ep.cmdUrl.includes('?') ? '&' : '?';
+          const deleteUrl = ep.cmdUrl + separator + 'cmd=delete&rerecord=' + rerecord;
+          const res = await fetch(deleteUrl, { method: 'POST' });
+          if (!res.ok) throw new Error('HTTP ' + res.status);
+          successCount++;
+          logLine(show.title + ' — ' + ep.title, true);
+        } catch (err) {
+          failCount++;
+          logLine(show.title + ' — ' + ep.title + ' (' + err.message + ')', false);
+        }
+      }
+    }
+
+    deleteBtn.disabled = false;
+    loadBtn.disabled = false;
+    setStatus('Done. Deleted ' + successCount + ' episode(s)' + (failCount ? ', ' + failCount + ' failed.' : '.'),
+      failCount ? 'error' : 'ok');
+
+    // Refresh the list to reflect current state on the DVR.
+    await loadRecordings();
+  });
+
+  function logLine(text, ok) {
+    const line = document.createElement('div');
+    line.className = ok ? 'pass' : 'fail';
+    line.textContent = (ok ? '✓ ' : '✗ ') + text;
+    deleteLog.appendChild(line);
+    deleteLog.scrollTop = deleteLog.scrollHeight;
+  }
+
+  // Attempt an initial load using the default address.
+  loadRecordings();
+})();
+</script>
+</body>
+</html>
