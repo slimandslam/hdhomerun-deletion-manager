@@ -12,6 +12,8 @@ If you have your HDHomeRun box on your home network, and can go to the managemen
 
 Just open the app in your web browser. The app is a single web page named hdhomerun-deletion-manager.html
 
+It should work in any modern web browser that runs Javascript, and on any system (Linux, MacOS, Windows, Chrome, iOS, Android) but I have only tested it on MacOS.
+
 If the app is unable to access your HDHomeRun recording box, it’s almost certainly because either:
 
 - Your box is not accessible from your computer
