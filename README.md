@@ -18,7 +18,7 @@ If the app is unable to access your HDHomeRun recording box, it’s almost certa
 
 - Your box is not accessible from your computer
 - You need to set permissions on your web browser to allow web pages to access local devices on your network. In newer versions of MacOS, this setting is found in: 
-`System Settings -> Privacy & Security -> Local Network`. The permissions you need may vary depending on whether you run MacOS, Linux, or Windows. One developer notes that: For FireFox and LibreWolf, which may have HTTPS-Only mode enabled, you need to add the file url to the exceptions. 
+`System Settings -> Privacy & Security -> Local Network`. The permissions you need may vary depending on whether you run MacOS, Linux, or Windows. There may also be browser-dependent settings. For example, one user notes that: For the web browsers FireFox and LibreWolf, which may have HTTPS-Only mode enabled, you need to add the file url to the exceptions. 
 Go to: `Settings->Privacy and security->Connection and software security->Advanced Settings->HTTPS-Only Mode->Manage Exceptions`
 From that screen, supply the file:///url that you use to open the html file, click `Turn Off` and save your changes.
 
